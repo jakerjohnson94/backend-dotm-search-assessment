@@ -7,33 +7,37 @@ import sys
 import os
 import zipfile
 import re
-from xml.etree.ElementTree import XML
-
-WORD_NAMESPACE = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
-PARA = WORD_NAMESPACE + 'p'
-TEXT = WORD_NAMESPACE + 't'
+import argparse
+import glob
 
 
-def get_dir_files(dir):
-    filenames = os.listdir(dir)
-    return [os.path.join(dir, filename) for filename in filenames if filename.endswith('.dotm')]
-
-
-def unzip_dotm_files():
+def search_dotm_for_string(dir, search_str):
     output = 'match found in file {} \n ...{}...'
-    file_names = get_dir_files('dotm_files')
-    for filename in file_names:
-        doc = zipfile.ZipFile(filename)
-        xml_content = doc.read('word/document.xml')
-        if xml_content.find('$') != -1:
-            i = xml_content.find('$')
-            print(output.format(filename.split(
-                '/')[1], xml_content[i-40:i+41]))
+    file_names = glob.glob(dir+'/*.dotm')
+    matches = 0
 
+    for file_name in file_names:
+        doc = zipfile.ZipFile(file_name)
+        content = doc.read('word/document.xml')
+
+        if content.find(search_str) != -1:
+            i = content.find(search_str)
+            matches += 1
+            print(output.format('.'+file_name, content[i-40:i+41]))
+
+    print('Total dotm files searched: {}').format(len(file_names))
+    print('Total dotm files matched: {}').format(matches)
 
 
 def main():
-    unzip_dotm_files()
+    parser = argparse.ArgumentParser(
+        description="choose a string to search for and a directory of .dotm files")
+    parser.add_argument("--dir", type=str, action='store', default='.',
+                        help="directory to scan .dotm files")
+    parser.add_argument("search_str", type=str, action='store',
+                        help="string to search for in each file")
+    args = parser.parse_args()
+    search_dotm_for_string(args.dir, args.search_str)
 
 
 if __name__ == '__main__':
